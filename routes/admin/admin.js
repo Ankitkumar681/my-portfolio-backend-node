@@ -8,6 +8,7 @@ const Education = require("../../models/Education");
 const Experience = require("../../models/Experience");
 const router = express.Router();
 const authMiddleware = require('../../middlewares/auth');
+const Skill = require("../../models/Skill");
 
 
 // Ensure folders exist
@@ -268,6 +269,50 @@ router.post('/add-experience', authMiddleware, async (req, res) => {
 
   } catch (err) {
     console.error("Error in add-education:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+router.get('/get-skill', async (req, res) => {
+  try {
+    const data = await Skill.find();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/add-skill', authMiddleware, async (req, res) => {
+  try {
+    let newData = req.body;
+    // Normalize to array
+    // console.log("Incoming body:", newData);
+    if (!Array.isArray(newData)) {
+      if (typeof newData === 'object' && newData !== null) {
+        newData = [newData];
+      } else {
+        return res.status(400).json({ error: "Invalid Skill data format" });
+      }
+    }
+    // Inject userId into each object
+    const userId = req.user.id;
+    const skillWithUser = newData.map(entry => ({
+      ...entry,
+      userId,
+    }));
+    // Validate each object (optional but recommended)
+    for (const skill of skillWithUser) {
+      if (!skill.name || !skill.percentage || !skill.color ) {
+        return res.status(400).json({ error: "Each Skill object must include Name, Percentage and Color." });
+      }
+    }
+
+    // Delete old entries for this user
+    await Skill.deleteMany({ userId });
+    // Insert new ones
+    const inserted = await Skill.insertMany(skillWithUser);
+    res.status(200).json(inserted);
+  } catch (err) {
+    console.error("Error in add-skill:", err);
     res.status(500).json({ error: err.message });
   }
 });
