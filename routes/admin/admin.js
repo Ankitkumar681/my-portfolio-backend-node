@@ -9,6 +9,7 @@ const Experience = require("../../models/Experience");
 const router = express.Router();
 const authMiddleware = require('../../middlewares/auth');
 const Skill = require("../../models/Skill");
+const Service = require("../../models/Service");
 
 
 // Ensure folders exist
@@ -313,6 +314,50 @@ router.post('/add-skill', authMiddleware, async (req, res) => {
     res.status(200).json(inserted);
   } catch (err) {
     console.error("Error in add-skill:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+router.get('/get-services', async (req, res) => {
+  try {
+    const data = await Service.find();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/add-services', authMiddleware, async (req, res) => {
+  try {
+    let newData = req.body;
+    // Normalize to array
+    // console.log("Incoming body:", newData);
+    if (!Array.isArray(newData)) {
+      if (typeof newData === 'object' && newData !== null) {
+        newData = [newData];
+      } else {
+        return res.status(400).json({ error: "Invalid Skill data format" });
+      }
+    }
+    // Inject userId into each object
+    const userId = req.user.id;
+    const serviceWithUser = newData.map(entry => ({
+      ...entry,
+      userId,
+    }));
+    // Validate each object (optional but recommended)
+    for (const service of serviceWithUser) {
+      if (!service.title || !service.description) {
+        return res.status(400).json({ error: "Each Skill object must include Title and Description." });
+      }
+    }
+
+    // Delete old entries for this user
+    await ServiceWorker.deleteMany({ userId });
+    // Insert new ones
+    const inserted = await Service.insertMany(skillWithUser);
+    res.status(200).json(inserted);
+  } catch (err) {
+    console.error("Error in add-services:", err);
     res.status(500).json({ error: err.message });
   }
 });
