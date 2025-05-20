@@ -347,15 +347,15 @@ router.post('/add-services', authMiddleware, async (req, res) => {
     // Validate each object (optional but recommended)
     for (const service of serviceWithUser) {
       if (!service.title || !service.description) {
-        return res.status(400).json({ error: "Each Skill object must include Title and Description." });
+        return res.status(400).json({ error: "Each Service object must include Title and Description." });
       }
     }
 
     // Delete old entries for this user
-    await ServiceWorker.deleteMany({ userId });
+    await Service.deleteMany({ userId });
     // Insert new ones
-    const inserted = await Service.insertMany(skillWithUser);
-    res.status(200).json(inserted);
+    const inserted = await Service.insertMany(serviceWithUser);
+    res.status(200).json(inserted);   
   } catch (err) {
     console.error("Error in add-services:", err);
     res.status(500).json({ error: err.message });
