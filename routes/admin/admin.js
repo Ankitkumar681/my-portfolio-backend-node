@@ -10,7 +10,7 @@ const router = express.Router();
 const authMiddleware = require('../../middlewares/auth');
 const Skill = require("../../models/Skill");
 const Service = require("../../models/Service");
-
+const Technology = require("../../models/Technology");
 
 // Ensure folders exist
 ["uploads/images", "uploads/pdfs", "uploads/videos"].forEach((folder) => {
@@ -361,5 +361,40 @@ router.post('/add-services', authMiddleware, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+router.post('/add-technology', authMiddleware, upload.array("images"), async (req, res) => {
+  try {
+    const userId = req.user.id;
 
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No images provided." });
+    }
+
+    // Remove previous entries for the user (if desired)
+    const oldTech = await Technology.find({ userId });
+    for (const tech of oldTech) {
+      if (tech.image) deleteOldFile(tech.image);
+    }
+    await Technology.deleteMany({ userId });
+
+    // Save new entries
+    const newTechs = req.files.map(file => ({
+      userId,
+      image: `/uploads/images/${file.filename}`,
+    }));
+
+    const inserted = await Technology.insertMany(newTechs);
+    res.status(200).json({ message: "Technologies added successfully", data: inserted });
+  } catch (err) {
+    console.error("Error in add-technology:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+router.get('/get-technology', async (req, res) => {
+  try {
+    const data = await Technology.find().select("image -_id");
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 module.exports = router;
