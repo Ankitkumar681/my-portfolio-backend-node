@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const nodemailer = require("nodemailer");
 const Profile = require("../../models/Profile");
 const User = require("../../models/User");
 const Education = require("../../models/Education");
@@ -11,7 +12,6 @@ const authMiddleware = require('../../middlewares/auth');
 const Skill = require("../../models/Skill");
 const Service = require("../../models/Service");
 const Technology = require("../../models/Technology");
-
 // Ensure folders exist
 ["uploads/images", "uploads/pdfs", "uploads/videos"].forEach((folder) => {
   if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
@@ -397,4 +397,30 @@ router.get('/get-technology', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+router.post("/contact", async (req, res) => {
+  const { name, email, subject, message } = req.body;
+
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: process.env.EMAIL_USER,  // Use the email from .env
+      pass: process.env.EMAIL_PASS,  // Use the password from .env
+    },
+  });
+
+  const mailOptions = {
+    from: email,
+    to: process.env.EMAIL_USER,
+    subject: `Portfolio Message: ${subject}`,
+    text: `From: ${name}\nEmail: ${email}\n\n${message}`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: "Message sent successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Message failed to send" });
+  }
+});
+
 module.exports = router;
