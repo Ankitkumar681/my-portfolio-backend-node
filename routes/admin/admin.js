@@ -8,10 +8,11 @@ const User = require("../../models/User");
 const Education = require("../../models/Education");
 const Experience = require("../../models/Experience");
 const router = express.Router();
-const authMiddleware = require('../../middlewares/auth');
+const authMiddleware = require("../../middlewares/auth");
 const Skill = require("../../models/Skill");
 const Service = require("../../models/Service");
 const Technology = require("../../models/Technology");
+const Blog = require("../../models/Blog");
 // Ensure folders exist
 ["uploads/images", "uploads/pdfs", "uploads/videos"].forEach((folder) => {
   if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
@@ -48,7 +49,8 @@ const upload = multer({ storage });
 
 // POST: Update or Create Profile
 router.post(
-  "/update-profile", authMiddleware, 
+  "/update-profile",
+  authMiddleware,
   upload.fields([
     { name: "profilePic", maxCount: 1 },
     { name: "profilePic2", maxCount: 1 },
@@ -59,7 +61,9 @@ router.post(
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Unauthorized: Missing user ID" });
+        return res
+          .status(401)
+          .json({ message: "Unauthorized: Missing user ID" });
       }
 
       const {
@@ -69,7 +73,7 @@ router.post(
         birthday,
         address,
         experience,
-        aboutText
+        aboutText,
       } = req.body;
 
       if (!name) {
@@ -87,14 +91,19 @@ router.post(
       if (profile) {
         // Delete old files if new ones are uploaded
         if (profilePic && profile.profilePic) deleteOldFile(profile.profilePic);
-        if (profilePic2 && profile.profilePic2) deleteOldFile(profile.profilePic2);
+        if (profilePic2 && profile.profilePic2)
+          deleteOldFile(profile.profilePic2);
         if (resumePdf && profile.pdf) deleteOldFile(profile.pdf);
         if (video && profile.video) deleteOldFile(profile.video);
 
         // Update existing profile
         profile.name = name;
-        profile.profilePic = profilePic ? `/uploads/images/${profilePic}` : profile.profilePic;
-        profile.profilePic2 = profilePic2 ? `/uploads/images/${profilePic2}` : profile.profilePic2;
+        profile.profilePic = profilePic
+          ? `/uploads/images/${profilePic}`
+          : profile.profilePic;
+        profile.profilePic2 = profilePic2
+          ? `/uploads/images/${profilePic2}`
+          : profile.profilePic2;
         profile.pdf = resumePdf ? `/uploads/pdfs/${resumePdf}` : profile.pdf;
         profile.video = video ? `/uploads/videos/${video}` : profile.video;
         profile.aboutText = aboutText || profile.aboutText;
@@ -125,7 +134,9 @@ router.post(
         await user.save();
       }
 
-      res.status(200).json({ message: "Profile saved successfully", data: profile });
+      res
+        .status(200)
+        .json({ message: "Profile saved successfully", data: profile });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error", error: err.message });
@@ -156,23 +167,23 @@ router.get("/get-profile", async (req, res) => {
         name: profile.name,
         email: user.email,
         profilePic: profile.profilePic,
-        profilePic2: profile.profilePic2 || '',
+        profilePic2: profile.profilePic2 || "",
         pdf: profile.pdf,
         video: profile.video,
-        aboutText: profile.aboutText || '',
-        phoneNumber: user.phoneNumber || '',
-        degree: user.degree || '',
-        birthday: user.birthday || '',
-        address: user.address || '',
-        experience: user.experience || '',
-      }
+        aboutText: profile.aboutText || "",
+        phoneNumber: user.phoneNumber || "",
+        degree: user.degree || "",
+        birthday: user.birthday || "",
+        address: user.address || "",
+        experience: user.experience || "",
+      },
     });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
-router.post('/add-education', authMiddleware, async (req, res) => {
+router.post("/add-education", authMiddleware, async (req, res) => {
   try {
     let newData = req.body;
 
@@ -180,7 +191,7 @@ router.post('/add-education', authMiddleware, async (req, res) => {
 
     // Normalize to array
     if (!Array.isArray(newData)) {
-      if (typeof newData === 'object' && newData !== null) {
+      if (typeof newData === "object" && newData !== null) {
         newData = [newData];
       } else {
         return res.status(400).json({ error: "Invalid education data format" });
@@ -189,7 +200,7 @@ router.post('/add-education', authMiddleware, async (req, res) => {
 
     // Inject userId into each object
     const userId = req.user.id;
-    const educationWithUser = newData.map(entry => ({
+    const educationWithUser = newData.map((entry) => ({
       ...entry,
       userId,
     }));
@@ -197,7 +208,12 @@ router.post('/add-education', authMiddleware, async (req, res) => {
     // Validate each object (optional but recommended)
     for (const edu of educationWithUser) {
       if (!edu.degreeName || !edu.collegeName || !edu.fromYear || !edu.toYear) {
-        return res.status(400).json({ error: "Each education object must include degreeName, collegeName, fromYear, and toYear" });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Each education object must include degreeName, collegeName, fromYear, and toYear",
+          });
       }
     }
 
@@ -207,15 +223,13 @@ router.post('/add-education', authMiddleware, async (req, res) => {
     // Insert new ones
     const inserted = await Education.insertMany(educationWithUser);
     res.status(200).json(inserted);
-
   } catch (err) {
     console.error("Error in add-education:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-
-router.get('/get-education', async (req, res) => {
+router.get("/get-education", async (req, res) => {
   try {
     const data = await Education.find();
     res.json(data);
@@ -223,7 +237,7 @@ router.get('/get-education', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-router.get('/get-experience', async (req, res) => {
+router.get("/get-experience", async (req, res) => {
   try {
     const data = await Experience.find();
     res.json(data);
@@ -232,7 +246,7 @@ router.get('/get-experience', async (req, res) => {
   }
 });
 
-router.post('/add-experience', authMiddleware, async (req, res) => {
+router.post("/add-experience", authMiddleware, async (req, res) => {
   try {
     let newData = req.body;
 
@@ -240,24 +254,36 @@ router.post('/add-experience', authMiddleware, async (req, res) => {
 
     // Normalize to array
     if (!Array.isArray(newData)) {
-      if (typeof newData === 'object' && newData !== null) {
+      if (typeof newData === "object" && newData !== null) {
         newData = [newData];
       } else {
-        return res.status(400).json({ error: "Invalid Experience data format" });
+        return res
+          .status(400)
+          .json({ error: "Invalid Experience data format" });
       }
     }
 
     // Inject userId into each object
     const userId = req.user.id;
-    const experienceWithUser = newData.map(entry => ({
+    const experienceWithUser = newData.map((entry) => ({
       ...entry,
       userId,
     }));
 
     // Validate each object (optional but recommended)
     for (const exp of experienceWithUser) {
-      if (!exp.designation || !exp.companyName || !exp.fromTime || !exp.toTime) {
-        return res.status(400).json({ error: "Each Experience object must include Disignation, Company Name and Time." });
+      if (
+        !exp.designation ||
+        !exp.companyName ||
+        !exp.fromTime ||
+        !exp.toTime
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Each Experience object must include Disignation, Company Name and Time.",
+          });
       }
     }
 
@@ -267,13 +293,12 @@ router.post('/add-experience', authMiddleware, async (req, res) => {
     // Insert new ones
     const inserted = await Experience.insertMany(experienceWithUser);
     res.status(200).json(inserted);
-
   } catch (err) {
     console.error("Error in add-education:", err);
     res.status(500).json({ error: err.message });
   }
 });
-router.get('/get-skill', async (req, res) => {
+router.get("/get-skill", async (req, res) => {
   try {
     const data = await Skill.find();
     res.json(data);
@@ -282,13 +307,13 @@ router.get('/get-skill', async (req, res) => {
   }
 });
 
-router.post('/add-skill', authMiddleware, async (req, res) => {
+router.post("/add-skill", authMiddleware, async (req, res) => {
   try {
     let newData = req.body;
     // Normalize to array
     // console.log("Incoming body:", newData);
     if (!Array.isArray(newData)) {
-      if (typeof newData === 'object' && newData !== null) {
+      if (typeof newData === "object" && newData !== null) {
         newData = [newData];
       } else {
         return res.status(400).json({ error: "Invalid Skill data format" });
@@ -296,14 +321,18 @@ router.post('/add-skill', authMiddleware, async (req, res) => {
     }
     // Inject userId into each object
     const userId = req.user.id;
-    const skillWithUser = newData.map(entry => ({
+    const skillWithUser = newData.map((entry) => ({
       ...entry,
       userId,
     }));
     // Validate each object (optional but recommended)
     for (const skill of skillWithUser) {
-      if (!skill.name || !skill.percentage || !skill.color ) {
-        return res.status(400).json({ error: "Each Skill object must include Name, Percentage and Color." });
+      if (!skill.name || !skill.percentage || !skill.color) {
+        return res
+          .status(400)
+          .json({
+            error: "Each Skill object must include Name, Percentage and Color.",
+          });
       }
     }
 
@@ -317,7 +346,7 @@ router.post('/add-skill', authMiddleware, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-router.get('/get-services', async (req, res) => {
+router.get("/get-services", async (req, res) => {
   try {
     const data = await Service.find();
     res.json(data);
@@ -326,13 +355,13 @@ router.get('/get-services', async (req, res) => {
   }
 });
 
-router.post('/add-services', authMiddleware, async (req, res) => {
+router.post("/add-services", authMiddleware, async (req, res) => {
   try {
     let newData = req.body;
     // Normalize to array
     // console.log("Incoming body:", newData);
     if (!Array.isArray(newData)) {
-      if (typeof newData === 'object' && newData !== null) {
+      if (typeof newData === "object" && newData !== null) {
         newData = [newData];
       } else {
         return res.status(400).json({ error: "Invalid Skill data format" });
@@ -340,14 +369,18 @@ router.post('/add-services', authMiddleware, async (req, res) => {
     }
     // Inject userId into each object
     const userId = req.user.id;
-    const serviceWithUser = newData.map(entry => ({
+    const serviceWithUser = newData.map((entry) => ({
       ...entry,
       userId,
     }));
     // Validate each object (optional but recommended)
     for (const service of serviceWithUser) {
       if (!service.title || !service.description) {
-        return res.status(400).json({ error: "Each Service object must include Title and Description." });
+        return res
+          .status(400)
+          .json({
+            error: "Each Service object must include Title and Description.",
+          });
       }
     }
 
@@ -355,41 +388,48 @@ router.post('/add-services', authMiddleware, async (req, res) => {
     await Service.deleteMany({ userId });
     // Insert new ones
     const inserted = await Service.insertMany(serviceWithUser);
-    res.status(200).json(inserted);   
+    res.status(200).json(inserted);
   } catch (err) {
     console.error("Error in add-services:", err);
     res.status(500).json({ error: err.message });
   }
 });
-router.post('/add-technology', authMiddleware, upload.array("images"), async (req, res) => {
-  try {
-    const userId = req.user.id;
+router.post(
+  "/add-technology",
+  authMiddleware,
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
 
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: "No images provided." });
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: "No images provided." });
+      }
+
+      // Remove previous entries for the user (if desired)
+      const oldTech = await Technology.find({ userId });
+      for (const tech of oldTech) {
+        if (tech.image) deleteOldFile(tech.image);
+      }
+      await Technology.deleteMany({ userId });
+
+      // Save new entries
+      const newTechs = req.files.map((file) => ({
+        userId,
+        image: `/uploads/images/${file.filename}`,
+      }));
+
+      const inserted = await Technology.insertMany(newTechs);
+      res
+        .status(200)
+        .json({ message: "Technologies added successfully", data: inserted });
+    } catch (err) {
+      console.error("Error in add-technology:", err);
+      res.status(500).json({ error: err.message });
     }
-
-    // Remove previous entries for the user (if desired)
-    const oldTech = await Technology.find({ userId });
-    for (const tech of oldTech) {
-      if (tech.image) deleteOldFile(tech.image);
-    }
-    await Technology.deleteMany({ userId });
-
-    // Save new entries
-    const newTechs = req.files.map(file => ({
-      userId,
-      image: `/uploads/images/${file.filename}`,
-    }));
-
-    const inserted = await Technology.insertMany(newTechs);
-    res.status(200).json({ message: "Technologies added successfully", data: inserted });
-  } catch (err) {
-    console.error("Error in add-technology:", err);
-    res.status(500).json({ error: err.message });
   }
-});
-router.get('/get-technology', async (req, res) => {
+);
+router.get("/get-technology", async (req, res) => {
   try {
     const data = await Technology.find().select("image -_id");
     res.json(data);
@@ -403,8 +443,8 @@ router.post("/contact", async (req, res) => {
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
-      user: process.env.EMAIL_USER,  // Use the email from .env
-      pass: process.env.EMAIL_PASS,  // Use the password from .env
+      user: process.env.EMAIL_USER, // Use the email from .env
+      pass: process.env.EMAIL_PASS, // Use the password from .env
     },
   });
 
@@ -422,5 +462,78 @@ router.post("/contact", async (req, res) => {
     res.status(500).json({ error: "Message failed to send" });
   }
 });
+router.post(
+  "/add-blog",
+  authMiddleware,
+  upload.fields([
+    { name: "thumbnail", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { title, description } = req.body;
 
+      if (!title || !description) {
+        return res
+          .status(400)
+          .json({ error: "Title and Description are required." });
+      }
+
+      const thumbnail = req.files["thumbnail"]?.[0]?.filename
+        ? `/uploads/images/${req.files["thumbnail"][0].filename}`
+        : null;
+
+      const images = (req.files["images"] || []).map(
+        (file) => `/uploads/images/${file.filename}`
+      );
+
+      if (!thumbnail) {
+        return res.status(400).json({ error: "Thumbnail image is required." });
+      }
+
+      const blog = new Blog({
+        userId,
+        title,
+        thumbnail,
+        images,
+        description,
+      });
+
+      await blog.save();
+      res.status(200).json({ message: "Blog saved successfully", data: blog });
+    } catch (err) {
+      console.error("Error adding blog:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+router.get('/homepage-blogs', async (req, res) => {
+  try {
+    const blogs = await Blog.find({}, 'title thumbnail createdAt').sort({ createdAt: -1 }).limit(6);
+    // 'title thumbnail createdAt' means only these fields are selected.
+    // MongoDB automatically includes _id, so you get id as well.
+
+    res.status(200).json(blogs);
+  } catch (error) {
+    console.error("Error fetching blogs:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+router.get("/blog/:id", async (req, res) => {
+  try {
+    const blogId = req.params.id;
+
+    const blog = await Blog.findById(blogId).lean();
+
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+
+    res.status(200).json(blog);
+  } catch (err) {
+    console.error("Error fetching blog:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 module.exports = router;

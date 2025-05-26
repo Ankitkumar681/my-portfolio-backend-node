@@ -23,7 +23,7 @@ const blogSchema = new mongoose.Schema(
       default: null,
     },
     images:{
-        type:String,
+        type:[String],
         default: null
     }
   },
