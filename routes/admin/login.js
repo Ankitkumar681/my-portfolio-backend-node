@@ -82,9 +82,8 @@ router.post('/verifyOtp', async (req, res) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET_KEY,
-      { expiresIn: '24h' }
+      // { expiresIn: '24h' }
     );
-
     // Send JWT token in response
     res.status(200).json({
       message: 'Login successful!',

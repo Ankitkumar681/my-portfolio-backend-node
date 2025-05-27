@@ -536,4 +536,61 @@ router.get("/blog/:id", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+router.get("/get-blogs", async (req, res) => {
+  try {
+    const blogs = await Blog.find().sort({ createdAt: -1 }); // latest first
+    res.json(blogs);
+  } catch (error) {
+    console.error("Error fetching blogs:", error);
+    res.status(500).json({ message: "Server error fetching blogs." });
+  }
+});
+const deleteFile = async (filePath) => {
+  if (!filePath) return;
+  
+  try {
+    // If filePath is relative, convert to absolute path
+    // Adjust `uploads` or your base folder accordingly
+    const absolutePath = path.isAbsolute(filePath) 
+      ? filePath 
+      : path.join(__dirname, "..", "uploads", filePath);
+    
+    // Check if file exists before deleting
+    await fs.access(absolutePath);
+    
+    await fs.unlink(absolutePath);
+    console.log(`Deleted file: ${absolutePath}`);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      console.warn(`File not found (already deleted?): ${filePath}`);
+    } else {
+      console.error(`Failed to delete file ${filePath}:`, error);
+    }
+  }
+};
+
+router.delete("/delete-blog/:id", async (req, res) => {
+  try {
+    const blogId = req.params.id;
+    const blog = await Blog.findById(blogId);
+    if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
+
+    // Await deletions
+    if (blog.thumbnail) {
+      await deleteFile(blog.thumbnail);
+    }
+
+    if (Array.isArray(blog.images)) {
+      for (const imgPath of blog.images) {
+        await deleteFile(imgPath);
+      }
+    }
+
+    await Blog.findByIdAndDelete(blogId);
+    res.json({ success: true, message: "Blog and related files deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting blog:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
 module.exports = router;
