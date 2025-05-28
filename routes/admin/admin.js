@@ -545,29 +545,6 @@ router.get("/get-blogs", async (req, res) => {
     res.status(500).json({ message: "Server error fetching blogs." });
   }
 });
-const deleteFile = async (filePath) => {
-  if (!filePath) return;
-  
-  try {
-    // If filePath is relative, convert to absolute path
-    // Adjust `uploads` or your base folder accordingly
-    const absolutePath = path.isAbsolute(filePath) 
-      ? filePath 
-      : path.join(__dirname, "..", "uploads", filePath);
-    
-    // Check if file exists before deleting
-    await fs.access(absolutePath);
-    
-    await fs.unlink(absolutePath);
-    console.log(`Deleted file: ${absolutePath}`);
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      console.warn(`File not found (already deleted?): ${filePath}`);
-    } else {
-      console.error(`Failed to delete file ${filePath}:`, error);
-    }
-  }
-};
 
 router.delete("/delete-blog/:id", async (req, res) => {
   try {
@@ -577,12 +554,12 @@ router.delete("/delete-blog/:id", async (req, res) => {
 
     // Await deletions
     if (blog.thumbnail) {
-      await deleteFile(blog.thumbnail);
+      await deleteOldFile(blog.thumbnail);
     }
 
     if (Array.isArray(blog.images)) {
       for (const imgPath of blog.images) {
-        await deleteFile(imgPath);
+        await deleteOldFile(imgPath);
       }
     }
 
@@ -593,4 +570,58 @@ router.delete("/delete-blog/:id", async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+router.put(
+  "/update-blog/:id",
+  authMiddleware,
+  upload.fields([
+    { name: "thumbnail", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { title, description } = req.body;
+      const { id } = req.params;
+
+      const blog = await Blog.findById(id);
+      if (!blog) {
+        return res.status(404).json({ error: "Blog not found" });
+      }
+
+      if (blog.userId.toString() !== userId) {
+        return res.status(403).json({ error: "Unauthorized to edit this blog" });
+      }
+
+      if (!title || !description) {
+        return res
+          .status(400)
+          .json({ error: "Title and Description are required." });
+      }
+
+      // Update title and description
+      blog.title = title;
+      blog.description = description;
+
+      // If new thumbnail is uploaded, update it
+      if (req.files["thumbnail"]?.[0]) {
+        blog.thumbnail = `/uploads/images/${req.files["thumbnail"][0].filename}`;
+      }
+
+      // Append new images to existing ones (if needed)
+      if (req.files["images"]?.length) {
+        const newImages = req.files["images"].map(
+          (file) => `/uploads/images/${file.filename}`
+        );
+        blog.images = [...blog.images, ...newImages];
+      }
+
+      await blog.save();
+      res.status(200).json({ message: "Blog updated successfully", data: blog });
+    } catch (err) {
+      console.error("Error updating blog:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 module.exports = router;
